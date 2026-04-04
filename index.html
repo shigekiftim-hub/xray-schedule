@@ -1,0 +1,1387 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>X線防護工事 スケジュール管理</title>
+  <style>
+    :root {
+      --primary: #1a56a0;
+      --secondary: #2d8a4e;
+      --accent: #e67e22;
+      --danger: #c0392b;
+      --light: #f0f4f8;
+      --white: #ffffff;
+      --border: #cbd5e0;
+      --text: #2d3748;
+      --muted: #718096;
+      --shadow: 0 2px 8px rgba(0,0,0,0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', 'Yu Gothic', sans-serif; background: var(--light); color: var(--text); font-size: 13px; }
+
+    /* Header */
+    .header { background: var(--primary); color: white; padding: 12px 20px; display: flex; align-items: center; justify-content: space-between; box-shadow: var(--shadow); }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .header-actions { display: flex; gap: 8px; }
+    .btn { padding: 7px 16px; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; font-family: inherit; font-weight: 500; transition: all 0.2s; }
+    .btn-primary { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #1344a0; }
+    .btn-secondary { background: white; color: var(--primary); border: 1.5px solid var(--primary); }
+    .btn-secondary:hover { background: var(--light); }
+    .btn-success { background: var(--secondary); color: white; }
+    .btn-success:hover { background: #236b3d; }
+    .btn-accent { background: var(--accent); color: white; }
+    .btn-accent:hover { background: #d35400; }
+    .btn-sm { padding: 4px 10px; font-size: 12px; }
+    .btn-header { background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.4); }
+    .btn-header:hover { background: rgba(255,255,255,0.3); }
+
+    /* Tabs */
+    .tabs { background: white; border-bottom: 2px solid var(--border); display: flex; padding: 0 20px; }
+    .tab { padding: 12px 20px; cursor: pointer; border-bottom: 3px solid transparent; margin-bottom: -2px; font-weight: 500; color: var(--muted); transition: all 0.2s; }
+    .tab.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab:hover:not(.active) { color: var(--text); background: var(--light); }
+
+    /* Tab content */
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+
+    /* Settings */
+    .settings-container { padding: 20px; display: grid; grid-template-columns: 1fr; gap: 16px; }
+    .card { background: white; border-radius: 10px; padding: 18px; box-shadow: var(--shadow); }
+    .card h3 { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 14px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-weight: 600; margin-bottom: 5px; color: var(--text); }
+    .form-group input, .form-group select { width: 100%; padding: 8px 10px; border: 1.5px solid var(--border); border-radius: 6px; font-family: inherit; font-size: 13px; transition: border-color 0.2s; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+    /* Periods table */
+    .periods-table { width: 100%; border-collapse: collapse; }
+    .periods-table th { background: var(--light); padding: 8px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid var(--border); font-size: 12px; }
+    .periods-table td { padding: 6px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .periods-table tr:hover td { background: #f8fafc; }
+    .periods-table tr.completed td { opacity: 0.55; }
+    .periods-table tr.completed .task-name { text-decoration: line-through; color: var(--muted); }
+    .periods-table input[type="number"] { width: 60px; padding: 4px 6px; border: 1.5px solid var(--border); border-radius: 4px; text-align: center; font-family: inherit; }
+    .periods-table input[type="date"] { width: 130px; padding: 4px 6px; border: 1.5px solid var(--border); border-radius: 4px; font-family: inherit; font-size: 12px; }
+    .periods-table input[type="checkbox"] { width: 16px; height: 16px; cursor: pointer; accent-color: var(--secondary); }
+    .task-color-dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; margin-right: 6px; flex-shrink: 0; }
+    .task-name-cell { display: flex; align-items: center; }
+    .milestone-badge { font-size: 10px; background: #fef3c7; color: #92400e; padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-weight: 600; }
+    .important-badge { font-size: 10px; background: #fee2e2; color: #991b1b; padding: 1px 5px; border-radius: 3px; margin-left: 4px; font-weight: 600; }
+    .computed-date { font-size: 12px; color: var(--muted); min-width: 95px; }
+
+    /* Calendar */
+    .calendar-container { padding: 20px; }
+    .calendar-controls { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .calendar-nav { display: flex; align-items: center; gap: 8px; }
+    .calendar-nav button { background: white; border: 1.5px solid var(--border); border-radius: 6px; padding: 6px 12px; cursor: pointer; font-family: inherit; }
+    .calendar-nav button:hover { background: var(--light); }
+    .calendar-nav .current-month { font-weight: 700; min-width: 100px; text-align: center; }
+    .calendars-grid { display: flex; flex-direction: column; gap: 20px; }
+    .month-calendar { background: white; border-radius: 10px; box-shadow: var(--shadow); overflow: hidden; }
+    .month-header { background: var(--primary); color: white; padding: 10px 14px; font-weight: 700; font-size: 14px; }
+    .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-weekday { text-align: center; padding: 6px 2px; font-size: 11px; font-weight: 600; background: #e8edf5; color: var(--muted); }
+    .cal-weekday.sun { color: #c0392b; }
+    .cal-weekday.sat { color: #2980b9; }
+    .cal-day { min-height: 70px; padding: 4px; border: 1px solid #f0f0f0; position: relative; cursor: default; }
+    .cal-day.other-month { background: #fafafa; }
+    .cal-day.today { background: #fffde7; }
+    .cal-day.holiday { background: #fff5f5; }
+    .cal-day.weekend-sat .day-num { color: #2980b9; }
+    .cal-day.weekend-sun .day-num, .cal-day.holiday .day-num { color: #c0392b; }
+    .cal-day .day-num { font-size: 12px; font-weight: 500; line-height: 1.2; }
+    .cal-day .holiday-name { font-size: 9px; color: #c0392b; line-height: 1; }
+    .cal-day .task-bars { margin-top: 2px; display: flex; flex-direction: column; gap: 1px; }
+    .task-bar { font-size: 10px; padding: 2px 5px; border-radius: 3px; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.5; font-weight: 500; }
+    .task-bar.start { border-radius: 6px 2px 2px 6px; }
+    .task-bar.end { border-radius: 2px 6px 6px 2px; }
+    .task-bar.middle { border-radius: 0; }
+    .task-bar.milestone { border-radius: 6px; font-weight: 700; text-align: center; }
+    .task-bar.important-milestone { font-size: 10px; padding: 2px 6px; border-radius: 6px; font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
+
+    /* Gantt chart */
+    .gantt-container { padding: 20px; overflow-x: auto; }
+    .gantt-wrapper { min-width: 900px; background: white; border-radius: 10px; box-shadow: var(--shadow); padding: 16px; }
+    .gantt-title { font-weight: 700; font-size: 14px; color: var(--primary); margin-bottom: 12px; }
+    .gantt-chart { position: relative; }
+    .gantt-row { display: flex; align-items: center; margin-bottom: 6px; min-height: 28px; }
+    .gantt-label { width: 220px; flex-shrink: 0; font-size: 12px; padding-right: 10px; text-align: right; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+    .gantt-timeline { flex: 1; position: relative; min-height: 28px; }
+    .gantt-bar { height: 20px; border-radius: 4px; display: flex; align-items: center; padding: 0 6px; font-size: 10px; color: white; font-weight: 600; position: absolute; top: 4px; white-space: nowrap; overflow: hidden; }
+    .gantt-milestone { width: 14px; height: 14px; transform: rotate(45deg); position: absolute; top: 7px; }
+    .gantt-header-row { display: flex; margin-bottom: 4px; }
+    .gantt-header-label { width: 220px; flex-shrink: 0; }
+    .gantt-header-dates { flex: 1; display: flex; }
+    .gantt-date-label { font-size: 10px; color: var(--muted); position: absolute; white-space: nowrap; transform: translateX(-50%); }
+    .gantt-grid-line { position: absolute; top: 0; bottom: 0; width: 1px; background: #e8edf5; }
+
+    /* Legend */
+    .legend { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px 20px; background: white; border-bottom: 1px solid var(--border); }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; }
+    .legend-dot { width: 10px; height: 10px; border-radius: 2px; }
+
+    /* Email */
+    .email-container { padding: 20px; display: grid; grid-template-columns: 280px 1fr; gap: 20px; }
+    .email-preview { background: white; border-radius: 10px; box-shadow: var(--shadow); padding: 16px; }
+    .email-preview h3 { font-size: 14px; font-weight: 700; color: var(--primary); margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .email-text { background: #f8fafc; border: 1.5px solid var(--border); border-radius: 8px; padding: 16px; font-size: 13px; line-height: 1.8; white-space: pre-wrap; min-height: 400px; font-family: 'Hiragino Kaku Gothic ProN', 'Meiryo', sans-serif; }
+    .email-actions { display: flex; gap: 8px; margin-top: 12px; }
+
+    /* Alert */
+    .alert { padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; font-size: 13px; }
+    .alert-info { background: #dbeafe; color: #1e40af; border: 1px solid #93c5fd; }
+    .alert-warning { background: #fef3c7; color: #92400e; border: 1px solid #fcd34d; }
+
+    /* Utility */
+    .mt-2 { margin-top: 8px; }
+    .mt-3 { margin-top: 12px; }
+    .text-muted { color: var(--muted); font-size: 12px; }
+    .text-right { text-align: right; }
+    .flex-center { display: flex; align-items: center; gap: 8px; }
+    .full-width { grid-column: 1 / -1; }
+    .divider { height: 1px; background: var(--border); margin: 12px 0; }
+
+    /* Colors for tasks */
+    .c-estimate { background-color: #3498db; }
+    .c-drawing { background-color: #27ae60; }
+    .c-checkback { background-color: #f39c12; }
+    .c-approval { background-color: #9b59b6; }
+    .c-order { background-color: #1abc9c; }
+    .c-payment { background-color: #e74c3c; }
+    .c-delivery { background-color: #e91e8c; }
+    .c-construction { background-color: #2c3e50; }
+    .c-construction-end { background-color: #16a085; }
+
+    /* Completion status */
+    .status-pending { color: var(--muted); font-size: 11px; }
+    .status-done { color: var(--secondary); font-size: 11px; font-weight: 600; }
+
+    @media print {
+      .header, .tabs, .calendar-controls, .email-settings-panel, .settings-container { display: none !important; }
+      .tab-content { display: none !important; }
+      .print-target { display: block !important; }
+      .calendars-grid { flex-direction: column !important; gap: 12px !important; }
+      .month-calendar { break-inside: avoid; }
+      body { background: white; }
+    }
+    /* 印刷ウィンドウ共通 */
+    .print-page * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🏗️ X線防護工事 スケジュール管理</h1>
+  <div class="header-actions">
+    <button class="btn btn-header btn-sm" onclick="saveToLocal()">💾 保存</button>
+    <button class="btn btn-header btn-sm" onclick="loadFromLocal()">📂 読込</button>
+    <button class="btn btn-header btn-sm" onclick="window.print()">🖨️ 印刷</button>
+  </div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('settings')">⚙️ 設定・期間</div>
+  <div class="tab" onclick="showTab('gantt')">📊 ガントチャート</div>
+  <div class="tab" onclick="showTab('calendar')">📅 月間カレンダー</div>
+  <div class="tab" onclick="showTab('email')">✉️ メール文面</div>
+</div>
+
+<!-- Settings Tab -->
+<div id="tab-settings" class="tab-content active">
+  <div class="settings-container">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;grid-column:1/-1">
+
+      <!-- 基本設定 + 凡例 横並び -->
+      <div class="card">
+        <h3>基本設定</h3>
+        <div class="form-group">
+          <label>0日目（開始日）</label>
+          <input type="date" id="startDate" onchange="onSettingsChange()">
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label>建具種別</label>
+            <select id="fixtureType" onchange="onSpecChange()">
+              <option value="irax">アルミ建具（イラックス）</option>
+              <option value="alude">アルミ建具（アルード）</option>
+              <option value="steel">鋼製建具</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>部屋数</label>
+            <select id="roomCount" onchange="onSpecChange()">
+              <option value="1">1部屋</option>
+              <option value="2">2部屋</option>
+              <option value="3">3部屋</option>
+              <option value="4">4部屋以上</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>顧客名</label>
+          <input type="text" id="clientName" placeholder="〇〇病院 〇〇様" oninput="generateEmail()">
+        </div>
+        <div class="form-group">
+          <label>工事名称（任意）</label>
+          <input type="text" id="projectName" placeholder="X線防護工事" oninput="generateEmail()">
+        </div>
+        <button class="btn btn-success" style="width:100%" onclick="calculateAndSwitch()">📐 スケジュールを計算</button>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:16px">
+        <div class="card">
+          <h3>凡例</h3>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:12px;">
+            <div class="flex-center"><span class="legend-dot c-estimate"></span> 見積作成・提出</div>
+            <div class="flex-center"><span class="legend-dot c-drawing"></span> X線防護施工図</div>
+            <div class="flex-center"><span class="legend-dot c-checkback"></span> チェックバック・修正</div>
+            <div class="flex-center"><span class="legend-dot c-approval"></span> 承認・注文</div>
+            <div class="flex-center"><span class="legend-dot c-payment"></span> 入金</div>
+            <div class="flex-center"><span class="legend-dot c-delivery"></span> 建具納品</div>
+            <div class="flex-center"><span class="legend-dot c-construction"></span> X線防護工事</div>
+            <div class="flex-center"><span style="font-size:10px;background:#fee2e2;color:#991b1b;padding:1px 5px;border-radius:3px;font-weight:700;">★</span> 重要マイルストーン</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>🔄 逆算機能</h3>
+          <p style="font-size:12px;color:var(--muted);margin-bottom:10px">建具納品日を指定して作図開始日などを逆算します</p>
+          <div class="form-group">
+            <label>建具納品希望日</label>
+            <input type="date" id="reverseDelivery">
+          </div>
+          <button class="btn btn-secondary" style="width:100%" onclick="calculateReverse()">逆算する</button>
+          <div id="reverseResult"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card full-width">
+      <h3>期間設定・完了管理</h3>
+      <table class="periods-table" id="periodsTable">
+        <thead>
+          <tr>
+            <th style="width:36px">完了</th>
+            <th>工程</th>
+            <th style="width:80px;text-align:center">期間(日)</th>
+            <th style="width:130px">計算日付</th>
+            <th style="width:140px">実際の日付</th>
+          </tr>
+        </thead>
+        <tbody id="periodsBody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Gantt Tab -->
+<div id="tab-gantt" class="tab-content">
+  <div style="padding:12px 20px 0;display:flex;align-items:center;gap:10px">
+    <button class="btn btn-accent btn-sm" onclick="printGantt()">🖨️ ガントチャートを印刷</button>
+  </div>
+  <div class="gantt-container">
+    <div class="gantt-wrapper" id="ganttWrapper">
+      <div class="gantt-title">工程表（ガントチャート）</div>
+      <div id="ganttChart">
+        <div class="alert alert-warning">設定タブでスケジュールを計算してください。</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Calendar Tab -->
+<div id="tab-calendar" class="tab-content">
+  <div class="calendar-controls" style="padding:16px 20px 0">
+    <div class="calendar-nav">
+      <button onclick="prevCalendarMonth()">◀</button>
+      <span class="current-month" id="calCurrentMonth"></span>
+      <button onclick="nextCalendarMonth()">▶</button>
+    </div>
+    <button class="btn btn-secondary btn-sm" onclick="showAllMonths()">全期間表示</button>
+    <button class="btn btn-secondary btn-sm" onclick="showSingleMonth()">1ヶ月表示</button>
+    <button class="btn btn-accent btn-sm" onclick="printCalendar()">🖨️ カレンダーを印刷</button>
+    <span class="text-muted">表示中: <span id="calDisplayRange"></span></span>
+  </div>
+  <div class="calendar-container">
+    <div class="calendars-grid" id="calendarsGrid">
+      <div class="alert alert-warning">設定タブでスケジュールを計算してください。</div>
+    </div>
+  </div>
+</div>
+
+<!-- Email Tab -->
+<div id="tab-email" class="tab-content">
+  <div class="email-container">
+    <div class="card">
+      <h3>メール設定</h3>
+      <div class="form-group">
+        <label>宛先（敬称含む）</label>
+        <input type="text" id="emailTo" placeholder="〇〇様" oninput="generateEmail()">
+      </div>
+      <div class="form-group">
+        <label>自社名</label>
+        <input type="text" id="emailFrom" value="医建エンジニアリング株式会社" readonly style="background:#f0f4f8;color:var(--muted)">
+      </div>
+      <div class="form-group">
+        <label>担当者名</label>
+        <input type="text" id="emailSender" placeholder="担当者名" oninput="generateEmail()">
+      </div>
+      <div class="form-group">
+        <label>追加メッセージ（任意）</label>
+        <textarea id="emailNote" rows="3" style="width:100%;padding:8px;border:1.5px solid var(--border);border-radius:6px;font-family:inherit;font-size:13px;resize:vertical" placeholder="工事に関する備考など" oninput="generateEmail()"></textarea>
+      </div>
+      <button class="btn btn-success" style="width:100%" onclick="generateEmail()">✉️ メール文面を生成</button>
+    </div>
+
+    <div class="email-preview">
+      <h3>生成されたメール文面</h3>
+      <div class="email-text" id="emailText">スケジュールを計算してからメール文面を生成してください。</div>
+      <div class="email-actions">
+        <button class="btn btn-primary" onclick="copyEmail()">📋 コピー</button>
+        <button class="btn btn-secondary" onclick="generateEmail()">🔄 再生成</button>
+      </div>
+      <div id="copyMsg" style="color:var(--secondary);font-size:12px;margin-top:6px;display:none">✅ クリップボードにコピーしました</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== JAPANESE HOLIDAYS ==========
+const FIXED_HOLIDAYS = {
+  '01-01': '元日',
+  '02-11': '建国記念の日',
+  '02-23': '天皇誕生日',
+  '04-29': '昭和の日',
+  '05-03': '憲法記念日',
+  '05-04': 'みどりの日',
+  '05-05': 'こどもの日',
+  '08-11': '山の日',
+  '11-03': '文化の日',
+  '11-23': '勤労感謝の日',
+};
+
+function getNthWeekday(year, month, nth, weekday) {
+  // weekday: 0=Sun,1=Mon,...,6=Sat
+  let d = new Date(year, month - 1, 1);
+  let count = 0;
+  while (d.getMonth() === month - 1) {
+    if (d.getDay() === weekday) {
+      count++;
+      if (count === nth) return d;
+    }
+    d = new Date(d.getTime() + 86400000);
+  }
+  return null;
+}
+
+function getLastWeekday(year, month, weekday) {
+  let d = new Date(year, month, 0); // last day of month
+  while (d.getDay() !== weekday) d = new Date(d.getTime() - 86400000);
+  return d;
+}
+
+// Vernal equinox approximation
+function vernalEquinox(year) {
+  let day = Math.floor(20.8431 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+  return new Date(year, 2, day);
+}
+function autumnalEquinox(year) {
+  let day = Math.floor(23.2488 + 0.242194 * (year - 1980) - Math.floor((year - 1980) / 4));
+  return new Date(year, 8, day);
+}
+
+function getHolidaysForYear(year) {
+  const holidays = {};
+
+  const addHoliday = (date, name) => {
+    const key = fmtKey(date);
+    if (!holidays[key]) holidays[key] = name;
+  };
+
+  // Fixed
+  for (const [mmdd, name] of Object.entries(FIXED_HOLIDAYS)) {
+    const [m, d] = mmdd.split('-').map(Number);
+    addHoliday(new Date(year, m-1, d), name);
+  }
+
+  // Happy Monday
+  addHoliday(getNthWeekday(year, 1, 2, 1), '成人の日');
+  addHoliday(getNthWeekday(year, 7, 3, 1), '海の日');
+  addHoliday(getNthWeekday(year, 9, 3, 1), '敬老の日');
+  addHoliday(getNthWeekday(year, 10, 2, 1), 'スポーツの日');
+
+  // Equinox
+  addHoliday(vernalEquinox(year), '春分の日');
+  addHoliday(autumnalEquinox(year), '秋分の日');
+
+  // Substitute holidays (振替休日)
+  const keys = Object.keys(holidays);
+  for (const key of [...keys]) {
+    const d = parseKey(key);
+    if (d.getDay() === 0) { // Sunday
+      let next = new Date(d.getTime() + 86400000);
+      while (holidays[fmtKey(next)]) next = new Date(next.getTime() + 86400000);
+      addHoliday(next, '振替休日');
+    }
+  }
+
+  // National holiday (国民の祝日: sandwiched between two holidays)
+  const allKeys = Object.keys(holidays).sort();
+  for (let i = 0; i < allKeys.length - 1; i++) {
+    const d1 = parseKey(allKeys[i]);
+    const d2 = parseKey(allKeys[i+1]);
+    if (d2 - d1 === 2 * 86400000) {
+      const between = new Date(d1.getTime() + 86400000);
+      if (between.getDay() !== 0) addHoliday(between, '国民の祝日');
+    }
+  }
+
+  return holidays;
+}
+
+const holidayCache = {};
+function getHolidays(year) {
+  if (!holidayCache[year]) holidayCache[year] = getHolidaysForYear(year);
+  return holidayCache[year];
+}
+
+function fmtKey(d) {
+  if (!d) return '';
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function parseKey(k) {
+  const [y,m,d] = k.split('-').map(Number);
+  return new Date(y, m-1, d);
+}
+function isHoliday(date) {
+  return !!getHolidays(date.getFullYear())[fmtKey(date)];
+}
+function getHolidayName(date) {
+  return getHolidays(date.getFullYear())[fmtKey(date)] || '';
+}
+function isWeekend(date) {
+  return date.getDay() === 0 || date.getDay() === 6;
+}
+function isBusinessDay(date) {
+  return !isWeekend(date) && !isHoliday(date);
+}
+function addBusinessDays(date, days) {
+  if (days <= 0) return date;
+  let d = new Date(date);
+  let added = 0;
+  while (added < days) {
+    d = new Date(d.getTime() + 86400000);
+    if (isBusinessDay(d)) added++;
+  }
+  return d;
+}
+function nextBusinessDay(date) {
+  let d = new Date(date.getTime() + 86400000);
+  while (!isBusinessDay(d)) d = new Date(d.getTime() + 86400000);
+  return d;
+}
+function subtractBusinessDays(date, days) {
+  if (days <= 0) return date;
+  let d = new Date(date);
+  let subtracted = 0;
+  while (subtracted < days) {
+    d = new Date(d.getTime() - 86400000);
+    if (isBusinessDay(d)) subtracted++;
+  }
+  return d;
+}
+function ensureBusinessDay(date) {
+  let d = new Date(date);
+  while (!isBusinessDay(d)) d = new Date(d.getTime() + 86400000);
+  return d;
+}
+
+// ========== DEFAULT PERIODS ==========
+const DEFAULT_PERIODS = {
+  irax: {
+    1: { estimate: 5, drawing: 7,  checkback: 5,  payment: 20, delivery: 16, construction: 3  },
+    2: { estimate: 5, drawing: 14, checkback: 5,  payment: 20, delivery: 16, construction: 5  },
+    3: { estimate: 7, drawing: 14, checkback: 7,  payment: 20, delivery: 16, construction: 8  },
+    4: { estimate: 8, drawing: 17, checkback: 10, payment: 20, delivery: 16, construction: 13 },
+  },
+  alude: {
+    1: { estimate: 5, drawing: 7,  checkback: 5,  payment: 20, delivery: 15, construction: 3  },
+    2: { estimate: 5, drawing: 14, checkback: 5,  payment: 20, delivery: 15, construction: 5  },
+    3: { estimate: 7, drawing: 14, checkback: 7,  payment: 20, delivery: 15, construction: 8  },
+    4: { estimate: 8, drawing: 17, checkback: 10, payment: 20, delivery: 15, construction: 13 },
+  },
+  steel: {
+    1: { estimate: 5, drawing: 7,  checkback: 5,  payment: 20, delivery: 35, construction: 3  },
+    2: { estimate: 5, drawing: 14, checkback: 5,  payment: 20, delivery: 35, construction: 5  },
+    3: { estimate: 7, drawing: 14, checkback: 7,  payment: 20, delivery: 35, construction: 8  },
+    4: { estimate: 8, drawing: 17, checkback: 10, payment: 20, delivery: 35, construction: 13 },
+  },
+};
+
+// ========== STATE ==========
+let state = {
+  startDate: null,
+  tasks: [],
+  calViewYear: new Date().getFullYear(),
+  calViewMonth: new Date().getMonth() + 1,
+  calMode: 'all', // 'all' or 'single'
+  schedule: null,
+};
+
+// Task definitions
+function getTaskDefs(p) {
+  return [
+    { id: 'estimate_start',    name: '見積作成 開始',           type: 'period_start',  color: '#3498db', important: false },
+    { id: 'estimate_period',   name: '見積作成期間',            type: 'period',        color: '#3498db', important: false, days: p.estimate },
+    { id: 'estimate_sub',      name: '見積書提出日',            type: 'milestone',     color: '#3498db', important: true,  linkedPeriod: 'estimate_period' },
+    { id: 'drawing_period',    name: 'X線防護施工図作図期間',    type: 'period',        color: '#27ae60', important: false, days: p.drawing },
+    { id: 'drawing_sub',       name: '施工図提出日',            type: 'milestone',     color: '#27ae60', important: true,  linkedPeriod: 'drawing_period' },
+    { id: 'checkback_period',  name: 'チェックバック・修正期間', type: 'period',        color: '#f39c12', important: false, days: p.checkback },
+    { id: 'drawing_approval',  name: 'X線防護施工図 承認日',    type: 'milestone',     color: '#9b59b6', important: true,  linkedPeriod: 'checkback_period' },
+    { id: 'order',             name: '注文書（工事依頼書）',    type: 'milestone',     color: '#1abc9c', important: true,  sameAsApproval: true },
+    { id: 'payment',           name: '入金日',                 type: 'milestone',     color: '#e74c3c', important: true,  sameAsOrder: true },
+    { id: 'fixture_period',    name: '建具製作期間',            type: 'period',        color: '#8e44ad', important: false, days: p.delivery },
+    { id: 'delivery',          name: '建具納品日',              type: 'milestone',     color: '#e91e8c', important: true,  linkedPeriod: 'fixture_period' },
+    { id: 'construction_start',name: 'X線防護工事 乗り込み日',  type: 'milestone',     color: '#2c3e50', important: true,  sameAsDelivery: true },
+    { id: 'construction_period',name: 'X線防護工事期間',        type: 'period',        color: '#2c3e50', important: false, days: p.construction },
+    { id: 'construction_end',  name: 'X線防護工事 完了日',      type: 'milestone',     color: '#16a085', important: true,  linkedPeriod: 'construction_period' },
+  ];
+}
+
+// ========== SCHEDULE CALCULATION ==========
+function calculateSchedule() {
+  const startDateVal = document.getElementById('startDate').value;
+  if (!startDateVal) { alert('0日目（開始日）を設定してください'); return; }
+
+  const fixtureType = document.getElementById('fixtureType').value;
+  const roomCount = parseInt(document.getElementById('roomCount').value);
+  const p = DEFAULT_PERIODS[fixtureType][roomCount];
+
+  // Get current period values from table if already rendered
+  const editedPeriods = getEditedPeriods();
+  const ep = editedPeriods || p;
+
+  const start = new Date(startDateVal + 'T00:00:00');
+  state.startDate = start;
+
+  const taskDefs = getTaskDefs(ep);
+
+  // Build state.tasks with dates
+  const tasks = [];
+  let cursor = start;
+
+  // Load existing completion/date overrides
+  const existingTasks = {};
+  state.tasks.forEach(t => { existingTasks[t.id] = t; });
+
+  for (let i = 0; i < taskDefs.length; i++) {
+    const def = taskDefs[i];
+    const existing = existingTasks[def.id] || {};
+    const completed = existing.completed || false;
+    const manualDate = existing.manualDate || '';
+
+    let taskDate = null;
+    let periodEnd = null;
+    let periodStart = null;
+
+    const manualDateObj = manualDate ? new Date(manualDate + 'T00:00:00') : null;
+
+    if (def.type === 'period_start') {
+      periodStart = ensureBusinessDay(cursor);
+      taskDate = periodStart;
+      cursor = completed && manualDateObj ? nextBusinessDay(manualDateObj) : periodStart;
+    } else if (def.type === 'period') {
+      if (def.days === 0) {
+        // 0日設定 = この工程をスキップ（cursor据え置き）
+        periodStart = null; periodEnd = null; taskDate = null;
+      } else {
+        periodStart = ensureBusinessDay(cursor);
+        if (completed && manualDateObj) {
+          // 完了済み：実際の完了日でカーソルを前倒し
+          periodEnd = manualDateObj;
+          taskDate = periodEnd;
+          cursor = nextBusinessDay(manualDateObj);
+        } else {
+          periodEnd = addBusinessDays(periodStart, def.days - 1);
+          taskDate = periodEnd;
+          cursor = addBusinessDays(periodStart, def.days);
+        }
+      }
+    } else if (def.type === 'milestone') {
+      if (def.linkedPeriod) {
+        // 期間の最終日 = この日付
+        const linked = tasks.find(t => t.id === def.linkedPeriod);
+        if (!linked || linked.periodEnd === null) {
+          // リンク先が0日設定でスキップされた → この工程もスキップ
+          taskDate = null;
+        } else if (completed && manualDateObj) {
+          // 完了済み・実際日付あり → その日付で前倒し
+          taskDate = manualDateObj;
+          cursor = nextBusinessDay(manualDateObj);
+        } else {
+          taskDate = linked.periodEnd;
+          // cursor は更新しない（period側が既に翌営業日へ進んでいる）
+        }
+      } else if (def.sameAsApproval) {
+        const approvalTask = tasks.find(t => t.id === 'drawing_approval');
+        taskDate = approvalTask ? (approvalTask.displayDate || approvalTask.date) : ensureBusinessDay(cursor);
+        cursor = completed && manualDateObj ? manualDateObj : taskDate;
+      } else if (def.sameAsDelivery) {
+        // 建具納品日と同日（displayDateを参照して完了日も反映）
+        const deliveryTask = tasks.find(t => t.id === 'delivery');
+        taskDate = deliveryTask ? (deliveryTask.displayDate || deliveryTask.date) : ensureBusinessDay(cursor);
+        // cursor を乗り込み日に合わせる → 工事期間も同日スタート
+        cursor = completed && manualDateObj ? manualDateObj : taskDate;
+      } else if (def.sameAsOrder) {
+        // 注文書と同日
+        const orderTask = tasks.find(t => t.id === 'order');
+        taskDate = orderTask ? (orderTask.displayDate || orderTask.date) : ensureBusinessDay(cursor);
+        cursor = completed && manualDateObj ? manualDateObj : taskDate;
+      } else if (def.offsetDays) {
+        // 注文日から N 営業日後（完了済みの注文日を反映）
+        const orderTask = tasks.find(t => t.id === 'order');
+        const orderDate = orderTask ? (orderTask.displayDate || orderTask.date) : cursor;
+        taskDate = addBusinessDays(orderDate, def.offsetDays);
+        cursor = completed && manualDateObj ? manualDateObj : taskDate;
+      } else {
+        taskDate = ensureBusinessDay(cursor);
+        cursor = completed && manualDateObj ? manualDateObj : taskDate;
+      }
+    }
+
+    tasks.push({
+      id: def.id,
+      name: def.name,
+      type: def.type,
+      color: def.color,
+      important: def.important,
+      days: def.days || null,
+      periodStart: periodStart,
+      periodEnd: periodEnd,
+      date: taskDate,
+      completed: completed,
+      manualDate: manualDate,
+      displayDate: manualDate ? new Date(manualDate + 'T00:00:00') : taskDate,
+    });
+  }
+
+  state.tasks = tasks;
+  state.schedule = tasks;
+
+  // Update calendar view range
+  const datesWithDates = tasks.filter(t => t.date);
+  if (datesWithDates.length > 0) {
+    const firstDate = datesWithDates[0].date;
+    state.calViewYear = firstDate.getFullYear();
+    state.calViewMonth = firstDate.getMonth() + 1;
+  }
+
+  renderPeriodsTable();
+  renderGantt();
+  renderCalendars();
+  generateEmail();
+}
+
+// ユーザーがボタンを押したときだけガントに切り替え
+function calculateAndSwitch() {
+  calculateSchedule();
+  showTab('gantt');
+}
+
+function getEditedPeriods() {
+  const rows = document.querySelectorAll('#periodsBody tr');
+  if (!rows.length) return null;
+  const result = {};
+  rows.forEach(row => {
+    const id = row.dataset.taskId;
+    const daysInput = row.querySelector('.days-input');
+    if (daysInput) result[id + '_days'] = parseInt(daysInput.value) || 0;
+  });
+
+  // Map to period object
+  const fixtureType = document.getElementById('fixtureType').value;
+  const roomCount = parseInt(document.getElementById('roomCount').value);
+  const base = DEFAULT_PERIODS[fixtureType][roomCount];
+
+  const pv = f => { const v = parseInt(document.querySelector(`[data-field="${f}"]`)?.value); return isNaN(v) ? null : v; };
+  return {
+    estimate:     pv('estimate')     ?? base.estimate,
+    drawing:      pv('drawing')      ?? base.drawing,
+    checkback:    pv('checkback')    ?? base.checkback,
+    payment:      pv('payment')      ?? base.payment,
+    delivery:     pv('delivery')     ?? base.delivery,
+    construction: pv('construction') ?? base.construction,
+  };
+}
+
+function onSettingsChange() {
+  // Don't auto-calculate, wait for button
+}
+
+function onSpecChange() {
+  const fixtureType = document.getElementById('fixtureType').value;
+  const roomCount = parseInt(document.getElementById('roomCount').value);
+  const p = DEFAULT_PERIODS[fixtureType][roomCount];
+  // Update period inputs if they exist
+  const fields = ['estimate','drawing','checkback','payment','delivery','construction'];
+  fields.forEach(f => {
+    const el = document.querySelector(`[data-field="${f}"]`);
+    if (el) el.value = p[f];
+  });
+}
+
+// ========== RENDER PERIODS TABLE ==========
+function renderPeriodsTable() {
+  const tbody = document.getElementById('periodsBody');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+
+  const fixtureType = document.getElementById('fixtureType').value;
+  const roomCount = parseInt(document.getElementById('roomCount').value);
+  const p = DEFAULT_PERIODS[fixtureType][roomCount];
+
+  const fieldMap = {
+    'estimate_period': 'estimate',
+    'drawing_period': 'drawing',
+    'checkback_period': 'checkback',
+    'payment': 'payment',
+    'fixture_period': 'delivery',
+    'construction_period': 'construction',
+  };
+
+  state.tasks.forEach(task => {
+    const tr = document.createElement('tr');
+    tr.dataset.taskId = task.id;
+    if (task.completed) tr.classList.add('completed');
+
+    const dateStr = task.date ? formatDate(task.date) : '-';
+    const displayDateStr = task.displayDate ? formatDate(task.displayDate) : '-';
+    const manualDateVal = task.manualDate || '';
+
+    const importantBadge = task.important ? '<span class="important-badge">★</span>' : '';
+
+    let daysCell = '';
+    const field = fieldMap[task.id];
+    if (task.type === 'derived_period') {
+      // Show computed span (business days) read-only
+      if (task.periodStart && task.periodEnd) {
+        let bd = 0;
+        let d = new Date(task.periodStart);
+        const endTs = task.periodEnd.getTime();
+        const hols = getHolidays(task.periodStart.getFullYear());
+        const hols2 = getHolidays(task.periodEnd.getFullYear());
+        const allHols = Object.assign({}, hols, hols2);
+        while (d.getTime() <= endTs) {
+          const dow = d.getDay();
+          if (dow !== 0 && dow !== 6 && !allHols[fmtKey(d)]) bd++;
+          d = new Date(d.getTime() + 86400000);
+        }
+        daysCell = `<span style="color:var(--muted);font-size:11px">${bd}日</span>`;
+      } else {
+        daysCell = `<span style="color:var(--muted);font-size:11px">—</span>`;
+      }
+    } else if (task.type === 'period' && task.days !== null) {
+      daysCell = `<input type="number" class="days-input" data-field="${field || ''}" value="${task.days}" min="0" max="365" onchange="onDaysChange('${task.id}', this.value)" style="width:56px">`;
+    } else {
+      daysCell = `<span style="color:var(--muted);font-size:11px">—</span>`;
+    }
+
+    tr.innerHTML = `
+      <td style="text-align:center"><input type="checkbox" ${task.completed ? 'checked' : ''} onchange="onCompletionChange('${task.id}', this.checked)"></td>
+      <td><div class="task-name-cell"><span class="task-color-dot" style="background:${task.color}"></span><span class="task-name">${task.name}</span>${importantBadge}</div></td>
+      <td style="text-align:center">${daysCell}</td>
+      <td><span class="computed-date" style="font-size:12px">${dateStr}</span></td>
+      <td><input type="date" value="${manualDateVal}" onchange="onManualDateChange('${task.id}', this.value)" style="width:130px;padding:4px;border:1.5px solid var(--border);border-radius:4px;font-size:12px"></td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function onDaysChange(taskId, val) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (task) task.days = Math.max(0, parseInt(val) || 0);
+  // Recalculate
+  const startDateVal = document.getElementById('startDate').value;
+  if (startDateVal) calculateSchedule();
+}
+
+function onCompletionChange(taskId, checked) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (task) task.completed = checked;
+  // 完了状態変更 → 再計算して後続工程に反映
+  if (document.getElementById('startDate').value) {
+    calculateSchedule();
+  } else {
+    renderPeriodsTable();
+    renderGantt();
+    renderCalendars();
+    generateEmail();
+  }
+}
+
+function onManualDateChange(taskId, val) {
+  const task = state.tasks.find(t => t.id === taskId);
+  if (task) {
+    task.manualDate = val;
+    task.displayDate = val ? new Date(val + 'T00:00:00') : task.date;
+  }
+  // 実際日付変更 → 再計算してガント・カレンダーに反映
+  if (document.getElementById('startDate').value) {
+    calculateSchedule();
+  } else {
+    renderPeriodsTable();
+    renderGantt();
+    renderCalendars();
+    generateEmail();
+  }
+}
+
+// ========== GANTT CHART ==========
+function renderGantt() {
+  const container = document.getElementById('ganttChart');
+  if (!state.tasks || !state.tasks.length) return;
+
+  const activeTasks = state.tasks.filter(t => !t.completed && (t.date || t.periodStart));
+  if (!activeTasks.length) { container.innerHTML = '<div class="alert alert-warning">アクティブな工程がありません。</div>'; return; }
+
+  const allDates = activeTasks.map(t => [t.periodStart, t.periodEnd, t.displayDate || t.date]).flat().filter(Boolean);
+  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+
+  const rangeStart = new Date(minDate); rangeStart.setDate(rangeStart.getDate() - 1);
+  const rangeEnd   = new Date(maxDate); rangeEnd.setDate(rangeEnd.getDate() + 3);
+
+  // Build day list
+  const days = [];
+  let dd = new Date(rangeStart);
+  while (dd <= rangeEnd) { days.push(new Date(dd)); dd = new Date(dd.getTime() + 86400000); }
+
+  const DAY_W = 24;
+  const LABEL_W = 190;
+  const WD = ['日','月','火','水','木','金','土'];
+
+  // Month header cells
+  let monthHtml = `<th style="min-width:${LABEL_W}px;width:${LABEL_W}px;position:sticky;left:0;z-index:3;background:#1a56a0;border-right:2px solid #2d6ab0"></th>`;
+  let i = 0;
+  while (i < days.length) {
+    const m = days[i].getMonth();
+    let span = 0;
+    while (i + span < days.length && days[i + span].getMonth() === m) span++;
+    monthHtml += `<th colspan="${span}" style="background:#1a56a0;color:white;text-align:center;padding:4px 2px;font-size:11px;border-right:1px solid #2d6ab0;font-weight:700">${days[i].getFullYear()}年${m+1}月</th>`;
+    i += span;
+  }
+
+  // Day header cells
+  let dayHtml = `<th style="min-width:${LABEL_W}px;width:${LABEL_W}px;position:sticky;left:0;z-index:3;background:#e8edf5;border-right:2px solid #cdd5e0;font-size:11px;color:var(--muted);padding:4px 8px">工程</th>`;
+  for (const day of days) {
+    const dow = day.getDay();
+    const hol = getHolidays(day.getFullYear())[fmtKey(day)];
+    const isSun = dow === 0 || hol;
+    const isSat = dow === 6;
+    const bg = isSun ? '#fee2e2' : isSat ? '#dbeafe' : '#f0f4f8';
+    const col = isSun ? '#991b1b' : isSat ? '#1e40af' : '#718096';
+    dayHtml += `<th title="${hol||''}" style="min-width:${DAY_W}px;width:${DAY_W}px;padding:2px 0;text-align:center;font-size:9px;background:${bg};color:${col};border-right:1px solid #e2e8f0;font-weight:${(isSun||isSat)?700:400}">${day.getDate()}<br>${WD[dow]}</th>`;
+  }
+
+  // Task rows
+  let rowsHtml = '';
+  for (const task of state.tasks) {
+    if (task.completed) continue;
+    const badge = task.important ? ' <span style="color:#991b1b;font-size:10px">★</span>' : '';
+    let cells = '';
+    for (const day of days) {
+      const ts = day.getTime();
+      const dow = day.getDay();
+      const hol = getHolidays(day.getFullYear())[fmtKey(day)];
+      const isSun = dow === 0 || hol;
+      const isSat = dow === 6;
+      const baseBg = 'white';
+
+      let bg = baseBg, content = '';
+      const dt = task.displayDate || task.date;
+
+      if ((task.type === 'period' || task.type === 'derived_period') && task.periodStart && task.periodEnd) {
+        const s = task.periodStart.getTime(), e = task.periodEnd.getTime();
+        if (ts >= s && ts <= e) {
+          bg = task.color + 'cc';
+          if (ts === s) {
+            const label = task.type === 'derived_period' ? task.name : (task.days + '日');
+            content = `<span style="position:absolute;left:2px;top:50%;transform:translateY(-50%);color:white;font-size:9px;font-weight:700;white-space:nowrap">${label}</span>`;
+          }
+        }
+      } else if (dt && ts === dt.getTime()) {
+        bg = task.color;
+        content = task.important
+          ? `<span style="color:white;font-size:11px;font-weight:900;line-height:1">★</span>`
+          : `<span style="color:white;font-size:10px">◆</span>`;
+      }
+      cells += `<td style="background:${bg};border-right:1px solid #e8edf5;border-bottom:1px solid #e8edf5;text-align:center;position:relative;height:26px">${content}</td>`;
+    }
+    rowsHtml += `<tr>
+      <td style="padding:3px 6px;white-space:nowrap;border-bottom:1px solid #e8edf5;border-right:2px solid #cdd5e0;position:sticky;left:0;background:white;z-index:1;max-width:${LABEL_W}px">
+        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${task.color};margin-right:4px;vertical-align:middle;flex-shrink:0"></span><span style="font-size:11px">${task.name}</span>${badge}
+      </td>${cells}</tr>`;
+  }
+
+  container.innerHTML = `<div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)"><table style="border-collapse:collapse;table-layout:fixed"><thead><tr>${monthHtml}</tr><tr>${dayHtml}</tr></thead><tbody>${rowsHtml}</tbody></table></div>`;
+}
+
+// ========== CALENDAR ==========
+function renderCalendars() {
+  const grid = document.getElementById('calendarsGrid');
+  if (!state.tasks || !state.tasks.length) return;
+
+  const activeTasks = state.tasks.filter(t => t.date);
+  if (!activeTasks.length) return;
+
+  const allDates = activeTasks.map(t => [t.periodStart, t.periodEnd, t.date, t.displayDate]).flat().filter(Boolean);
+  const minDate = new Date(Math.min(...allDates.map(d => d.getTime())));
+  const maxDate = new Date(Math.max(...allDates.map(d => d.getTime())));
+
+  if (state.calMode === 'all') {
+    grid.innerHTML = renderContinuousCalendar(minDate, maxDate);
+  } else {
+    document.getElementById('calDisplayRange').textContent = `${state.calViewYear}/${state.calViewMonth}`;
+    document.getElementById('calCurrentMonth').textContent = `${state.calViewYear}年${state.calViewMonth}月`;
+    grid.innerHTML = renderMonthCalendar(state.calViewYear, state.calViewMonth);
+  }
+}
+
+function renderContinuousCalendar(minDate, maxDate) {
+  const today = new Date(); today.setHours(0,0,0,0);
+
+  // Pad to week boundaries (Sun–Sat)
+  const startDate = new Date(minDate);
+  startDate.setDate(startDate.getDate() - startDate.getDay());
+  const endDate = new Date(maxDate);
+  endDate.setDate(endDate.getDate() + (6 - endDate.getDay()));
+
+  // Collect holidays for all relevant years
+  const holidays = {};
+  for (let y = startDate.getFullYear(); y <= endDate.getFullYear(); y++) {
+    Object.assign(holidays, getHolidays(y));
+  }
+
+  let html = `<div class="month-calendar"><div class="cal-grid">
+    <div class="cal-weekday sun">日</div>
+    <div class="cal-weekday">月</div>
+    <div class="cal-weekday">火</div>
+    <div class="cal-weekday">水</div>
+    <div class="cal-weekday">木</div>
+    <div class="cal-weekday">金</div>
+    <div class="cal-weekday sat">土</div>
+  `;
+
+  let cur = new Date(startDate); // always Sunday
+  const shownMonths = new Set();
+
+  while (cur <= endDate) {
+    // Check if this week contains day=1 of any month (→ insert month header)
+    // Also handle very first week
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cur.getTime() + i * 86400000);
+      const mk = `${d.getFullYear()}-${d.getMonth()}`;
+      if (d.getDate() === 1 || shownMonths.size === 0) {
+        if (!shownMonths.has(mk)) {
+          shownMonths.add(mk);
+          html += `<div style="grid-column:1/-1;background:var(--primary);color:white;padding:6px 12px;font-weight:700;font-size:13px">${d.getFullYear()}年${d.getMonth()+1}月</div>`;
+        }
+        break;
+      }
+    }
+
+    // Render 7 days of this week
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(cur.getTime() + i * 86400000);
+      const dow = d.getDay();
+      const key = fmtKey(d);
+      const holName = holidays[key] || '';
+      const isToday = d.getTime() === today.getTime();
+      const isSun = dow === 0;
+      const isSat = dow === 6;
+      const isHol = !!holName;
+
+      let classes = 'cal-day';
+      if (isToday) classes += ' today';
+      if (isHol) classes += ' holiday';
+      if (isSun) classes += ' weekend-sun';
+      if (isSat) classes += ' weekend-sat';
+
+      const bars = getTaskBarsForDay(d);
+      const barsHtml = bars.length ? `<div class="task-bars">${bars.join('')}</div>` : '';
+
+      html += `<div class="${classes}">
+        <div class="day-num">${d.getDate()}</div>
+        ${holName ? `<div class="holiday-name">${holName}</div>` : ''}
+        ${barsHtml}
+      </div>`;
+    }
+
+    cur.setDate(cur.getDate() + 7);
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function renderMonthCalendar(year, month) {
+  const holidays = getHolidays(year);
+  const firstDay = new Date(year, month - 1, 1);
+  const lastDay = new Date(year, month, 0);
+  const today = new Date();
+  today.setHours(0,0,0,0);
+
+  let html = `<div class="month-calendar">
+    <div class="month-header">${year}年${month}月</div>
+    <div class="cal-grid">
+      <div class="cal-weekday sun">日</div>
+      <div class="cal-weekday">月</div>
+      <div class="cal-weekday">火</div>
+      <div class="cal-weekday">水</div>
+      <div class="cal-weekday">木</div>
+      <div class="cal-weekday">金</div>
+      <div class="cal-weekday sat">土</div>
+    `;
+
+  // Padding days
+  const startDow = firstDay.getDay(); // 0=Sun
+  for (let i = 0; i < startDow; i++) {
+    const prevDate = new Date(year, month - 1, -startDow + i + 1);
+    html += `<div class="cal-day other-month"><div class="day-num" style="color:#ccc">${prevDate.getDate()}</div></div>`;
+  }
+
+  // Days
+  for (let day = 1; day <= lastDay.getDate(); day++) {
+    const date = new Date(year, month - 1, day);
+    const dow = date.getDay();
+    const key = fmtKey(date);
+    const holName = holidays[key] || '';
+    const isToday = date.getTime() === today.getTime();
+    const isSun = dow === 0;
+    const isSat = dow === 6;
+    const isHol = !!holName;
+
+    let classes = 'cal-day';
+    if (isToday) classes += ' today';
+    if (isHol) classes += ' holiday';
+    if (isSun) classes += ' weekend-sun';
+    if (isSat) classes += ' weekend-sat';
+
+    // Build task bars for this day
+    const bars = getTaskBarsForDay(date);
+    const barsHtml = bars.length ? `<div class="task-bars">${bars.join('')}</div>` : '';
+
+    html += `<div class="${classes}">
+      <div class="day-num">${day}</div>
+      ${holName ? `<div class="holiday-name">${holName}</div>` : ''}
+      ${barsHtml}
+    </div>`;
+  }
+
+  // Trailing padding
+  const endDow = lastDay.getDay();
+  for (let i = endDow + 1; i <= 6; i++) {
+    html += `<div class="cal-day other-month"><div class="day-num" style="color:#ccc">${i - endDow}</div></div>`;
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function getTaskBarsForDay(date) {
+  const bars = [];
+  const dateTs = date.getTime();
+
+  for (const task of state.tasks) {
+    if (task.completed) continue;
+
+    const displayDate = task.displayDate || task.date;
+    if (!displayDate) continue;
+
+    if ((task.type === 'period' || task.type === 'derived_period') && task.periodStart && task.periodEnd) {
+      const start = task.periodStart.getTime();
+      const end = task.periodEnd.getTime();
+      if (dateTs >= start && dateTs <= end) {
+        let posClass = 'middle';
+        let label = '';
+        if (dateTs === start) { posClass = 'start'; label = task.name; }
+        else if (dateTs === end) { posClass = 'end'; label = ''; }
+        bars.push(`<div class="task-bar ${posClass}" style="background:${task.color}" title="${task.name}">${label}</div>`);
+      }
+    } else if (task.type === 'milestone' || task.type === 'period_start') {
+      const dt = displayDate.getTime();
+      if (dateTs === dt) {
+        const isImp = task.important;
+        const cls = isImp ? 'task-bar important-milestone' : 'task-bar milestone';
+        const prefix = isImp ? '★ ' : '◆ ';
+        bars.push(`<div class="${cls}" style="background:${task.color}" title="${task.name}">${prefix}${task.name.replace('X線防護施工図 ','').replace('X線防護工事 ','').replace('（工事依頼書）','')}</div>`);
+      }
+    }
+  }
+
+  return bars;
+}
+
+// Calendar navigation
+function prevCalendarMonth() {
+  state.calViewMonth--;
+  if (state.calViewMonth < 1) { state.calViewMonth = 12; state.calViewYear--; }
+  state.calMode = 'single';
+  renderCalendars();
+}
+function nextCalendarMonth() {
+  state.calViewMonth++;
+  if (state.calViewMonth > 12) { state.calViewMonth = 1; state.calViewYear++; }
+  state.calMode = 'single';
+  renderCalendars();
+}
+// ========== 逆算機能 ==========
+function calculateReverse() {
+  const val = document.getElementById('reverseDelivery').value;
+  const resultEl = document.getElementById('reverseResult');
+  if (!val) { resultEl.innerHTML = '<div class="alert alert-warning" style="margin-top:8px">納品日を入力してください</div>'; return; }
+
+  const fixtureType = document.getElementById('fixtureType').value;
+  const roomCount = parseInt(document.getElementById('roomCount').value);
+  const base = DEFAULT_PERIODS[fixtureType][roomCount];
+  const ep = getEditedPeriods() || base;
+
+  const deliveryDate = new Date(val + 'T00:00:00');
+
+  // 逆算チェーン
+  const orderDate       = subtractBusinessDays(deliveryDate, ep.delivery);
+  const approvalDate    = subtractBusinessDays(orderDate, 1);
+  const checkbackEnd    = approvalDate;
+  const checkbackStart  = subtractBusinessDays(checkbackEnd, ep.checkback - 1);
+  const drawingEnd      = subtractBusinessDays(checkbackStart, 1);
+  const drawingStart    = subtractBusinessDays(drawingEnd, ep.drawing - 1);
+  const estimateEnd     = subtractBusinessDays(drawingStart, 1);
+  const estimateStart   = subtractBusinessDays(estimateEnd, ep.estimate - 1);
+  // 0日目 = 見積開始の前日（または同日）
+  const day0 = new Date(estimateStart.getTime() - 86400000);
+
+  resultEl.innerHTML = `
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:12px;margin-top:10px;font-size:12px">
+      <div style="font-weight:700;color:#166534;margin-bottom:8px;font-size:13px">逆算結果</div>
+      <table style="width:100%;border-collapse:collapse">
+        <tr style="background:#dcfce7"><td style="padding:4px 6px;font-weight:700">0日目（開始日）</td><td style="padding:4px 6px;font-weight:700;color:#166534">${formatDate(day0)}</td></tr>
+        <tr><td style="padding:3px 6px;color:var(--muted)">見積作成期間</td><td style="padding:3px 6px">${formatDate(estimateStart)} 〜 ${formatDate(estimateEnd)}</td></tr>
+        <tr style="background:#eff6ff"><td style="padding:3px 6px;font-weight:600">作図開始</td><td style="padding:3px 6px;font-weight:700;color:#1a56a0">${formatDate(drawingStart)}</td></tr>
+        <tr><td style="padding:3px 6px;color:var(--muted)">作図期間</td><td style="padding:3px 6px">${formatDate(drawingStart)} 〜 ${formatDate(drawingEnd)}</td></tr>
+        <tr><td style="padding:3px 6px;color:var(--muted)">チェックバック</td><td style="padding:3px 6px">${formatDate(checkbackStart)} 〜 ${formatDate(checkbackEnd)}</td></tr>
+        <tr><td style="padding:3px 6px;color:var(--muted)">承認日</td><td style="padding:3px 6px">${formatDate(approvalDate)}</td></tr>
+        <tr><td style="padding:3px 6px;color:var(--muted)">注文日</td><td style="padding:3px 6px">${formatDate(orderDate)}</td></tr>
+        <tr style="background:#fef3c7"><td style="padding:3px 6px;font-weight:600">建具納品日</td><td style="padding:3px 6px;font-weight:700;color:#92400e">${formatDate(deliveryDate)}</td></tr>
+      </table>
+      <button class="btn btn-primary btn-sm" style="margin-top:10px;width:100%" onclick="applyReverseDate('${fmtKey(day0)}')">この日付で0日目を設定して計算</button>
+    </div>`;
+}
+function applyReverseDate(dateStr) {
+  document.getElementById('startDate').value = dateStr;
+  calculateSchedule();
+  showTab('gantt');
+}
+
+function showAllMonths() { state.calMode = 'all'; renderCalendars(); }
+function showSingleMonth() { state.calMode = 'single'; renderCalendars(); }
+// ========== 印刷共通 ==========
+function printInNewWindow(bodyHtml, orientation) {
+  // 現在ページのstyleをすべて取得
+  const styles = Array.from(document.querySelectorAll('style'))
+    .map(s => s.textContent).join('\n');
+
+  const w = window.open('', '_blank', 'width=1000,height=800');
+  if (!w) { alert('ポップアップがブロックされました。許可してから再度お試しください。'); return; }
+  w.document.write(`<!DOCTYPE html>
+<html lang="ja"><head>
+<meta charset="UTF-8">
+<style>
+${styles}
+@page { size: A4 ${orientation}; margin: 8mm; }
+body { background: white !important; margin: 0; padding: 8px; }
+* { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+/* ヘッダー・タブ等を非表示 */
+.header, .tabs, .calendar-controls, .gantt-print-controls { display: none !important; }
+</style>
+</head><body class="print-page">
+${bodyHtml}
+<scr` + `ipt>
+window.onload = function() {
+  setTimeout(function() { window.print(); window.close(); }, 400);
+};
+</scr` + `ipt>
+</body></html>`);
+  w.document.close();
+}
+
+function printCalendar() {
+  // 全期間表示にして内容を取得
+  const prev = state.calMode;
+  state.calMode = 'all';
+  renderCalendars();
+  const calHtml = `<div class="calendar-container"><div class="calendars-grid" style="flex-direction:column;gap:16px">${document.getElementById('calendarsGrid').innerHTML}</div></div>`;
+  state.calMode = prev;
+  renderCalendars();
+  printInNewWindow(calHtml, 'portrait');
+}
+
+function printGantt() {
+  const ganttHtml = `<div class="gantt-wrapper" style="min-width:0;box-shadow:none;padding:8px">
+    <div class="gantt-title">工程表（ガントチャート）</div>
+    ${document.getElementById('ganttChart').innerHTML}
+  </div>`;
+  printInNewWindow(ganttHtml, 'landscape');
+}
+
+// ========== EMAIL GENERATION ==========
+function generateEmail() {
+  const emailEl = document.getElementById('emailText');
+  if (!state.tasks || !state.tasks.length) { emailEl.textContent = 'スケジュールを計算してからメール文面を生成してください。'; return; }
+
+  const to = document.getElementById('emailTo').value || document.getElementById('clientName').value || '〇〇様';
+  const from = document.getElementById('emailFrom').value || '株式会社〇〇';
+  const sender = document.getElementById('emailSender').value || '担当者';
+  const note = document.getElementById('emailNote').value || '';
+  const projectName = document.getElementById('projectName').value || 'X線防護工事';
+
+  const getDate = (id) => {
+    const task = state.tasks.find(t => t.id === id);
+    if (!task || task.completed) return null;
+    return task.displayDate || task.date;
+  };
+
+  const fmt = (d) => d ? formatDateFull(d) : '調整中';
+
+  const estSub = getDate('estimate_sub');
+  const drawSub = getDate('drawing_sub');
+  const approval = getDate('drawing_approval');
+  const order = getDate('order');
+  const payment = getDate('payment');
+  const delivery = getDate('delivery');
+  const constStart = getDate('construction_start');
+  const constEnd = getDate('construction_end');
+
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日`;
+
+  let body = `${to}\n\nお世話になっております。\n${from} ${sender}でございます。\n\n${projectName}のスケジュールについてご連絡申し上げます。\n\n`;
+  body += `─────────────────────────────\n`;
+  body += `■ ${projectName} 工程スケジュール\n`;
+  body += `─────────────────────────────\n\n`;
+
+  if (estSub) body += `【見積書提出予定日】　　　${fmt(estSub)}\n`;
+  if (drawSub) body += `【施工図提出予定日】　　　${fmt(drawSub)}\n`;
+  if (approval) body += `【施工図承認予定日】　　　${fmt(approval)}\n`;
+  if (order) body += `【注文書（工事依頼書）】　${fmt(order)}\n`;
+  if (payment) body += `【入金予定日】　　　　　　${fmt(payment)}\n`;
+  if (delivery) body += `【建具納品予定日】　　　　${fmt(delivery)}\n`;
+  if (constStart) body += `【工事乗り込み予定日】　　${fmt(constStart)}\n`;
+  if (constEnd) body += `【工事完了予定日】　　　　${fmt(constEnd)}\n`;
+
+  body += `\n─────────────────────────────\n\n`;
+  body += `※ 上記日程は平日（土日・祝日を除く）ベースの予定となります。\n`;
+  body += `※ 工程は進捗状況により変更が生じる場合がございます。\n`;
+
+  if (note) body += `\n${note}\n`;
+
+  body += `\nご不明な点がございましたら、お気軽にお問い合わせください。\nどうぞよろしくお願いいたします。\n\n${from}\n${sender}`;
+
+  emailEl.textContent = body;
+}
+
+function copyEmail() {
+  const text = document.getElementById('emailText').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const msg = document.getElementById('copyMsg');
+    msg.style.display = 'block';
+    setTimeout(() => msg.style.display = 'none', 2500);
+  });
+}
+
+// ========== DATE FORMATTERS ==========
+const WEEKDAYS_JA = ['日','月','火','水','木','金','土'];
+function formatDate(d) {
+  if (!d) return '-';
+  return `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}(${WEEKDAYS_JA[d.getDay()]})`;
+}
+function formatDateShort(d) {
+  if (!d) return '';
+  return `${d.getMonth()+1}/${d.getDate()}`;
+}
+function formatDateFull(d) {
+  if (!d) return '';
+  return `${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日（${WEEKDAYS_JA[d.getDay()]}）`;
+}
+
+// ========== TAB SWITCHING ==========
+function showTab(name) {
+  document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = { settings: 0, gantt: 1, calendar: 2, email: 3 };
+  document.querySelectorAll('.tab')[tabs[name]]?.classList.add('active');
+
+  if (name === 'gantt') renderGantt();
+  if (name === 'calendar') renderCalendars();
+  if (name === 'email') generateEmail();
+}
+
+// ========== LOCAL STORAGE ==========
+function saveToLocal() {
+  const data = {
+    startDate: document.getElementById('startDate').value,
+    fixtureType: document.getElementById('fixtureType').value,
+    roomCount: document.getElementById('roomCount').value,
+    clientName: document.getElementById('clientName').value,
+    projectName: document.getElementById('projectName').value,
+    emailTo: document.getElementById('emailTo').value,
+    emailFrom: document.getElementById('emailFrom').value,
+    emailSender: document.getElementById('emailSender').value,
+    emailNote: document.getElementById('emailNote').value,
+    tasks: state.tasks.map(t => ({
+      id: t.id, completed: t.completed, manualDate: t.manualDate, days: t.days
+    })),
+  };
+  localStorage.setItem('xray_schedule', JSON.stringify(data));
+  alert('保存しました');
+}
+
+function loadFromLocal() {
+  const raw = localStorage.getItem('xray_schedule');
+  if (!raw) { alert('保存データが見つかりません'); return; }
+  const data = JSON.parse(raw);
+  document.getElementById('startDate').value = data.startDate || '';
+  document.getElementById('fixtureType').value = data.fixtureType || 'irax';
+  document.getElementById('roomCount').value = data.roomCount || '1';
+  document.getElementById('clientName').value = data.clientName || '';
+  document.getElementById('projectName').value = data.projectName || '';
+  document.getElementById('emailTo').value = data.emailTo || '';
+  document.getElementById('emailFrom').value = data.emailFrom || '';
+  document.getElementById('emailSender').value = data.emailSender || '';
+  document.getElementById('emailNote').value = data.emailNote || '';
+
+  if (data.tasks) {
+    // Apply saved task state then recalculate
+    state.tasks = data.tasks; // temp
+  }
+  calculateSchedule();
+  alert('読み込みました');
+}
+
+// ========== INIT ==========
+function init() {
+  const today = new Date();
+  document.getElementById('startDate').value = fmtKey(today);
+  document.getElementById('calCurrentMonth').textContent = `${today.getFullYear()}年${today.getMonth()+1}月`;
+  state.calViewYear = today.getFullYear();
+  state.calViewMonth = today.getMonth() + 1;
+}
+
+init();
+</script>
+</body>
+</html>
