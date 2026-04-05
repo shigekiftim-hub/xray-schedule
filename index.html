@@ -170,6 +170,50 @@
     }
     /* 印刷ウィンドウ共通 */
     .print-page * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+    /* ========== スマホ対応（～640px） ========== */
+    @media (max-width: 640px) {
+      body { font-size: 14px; }
+
+      /* ヘッダー */
+      .header { padding: 10px 12px; flex-wrap: wrap; gap: 6px; }
+      .header h1 { font-size: 14px; }
+      .header-actions { gap: 6px; }
+      .btn-header { padding: 5px 9px; font-size: 11px; }
+
+      /* タブ：横スクロール可 */
+      .tabs { padding: 0 4px; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; display: flex; }
+      .tab { padding: 10px 12px; font-size: 12px; white-space: nowrap; flex-shrink: 0; }
+
+      /* 設定画面 */
+      .settings-container { padding: 10px; gap: 10px; }
+      .settings-container > div:first-child { grid-template-columns: 1fr !important; }
+      .form-row { grid-template-columns: 1fr !important; gap: 0; }
+      .form-group input, .form-group select, textarea { font-size: 16px !important; }
+
+      /* 期間テーブル：横スクロール */
+      .card.full-width { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+      .periods-table { min-width: 500px; }
+
+      /* ガントチャート */
+      .gantt-container { padding: 10px; }
+
+      /* カレンダーコントロール：折り返し */
+      .calendar-controls { flex-wrap: wrap; gap: 8px; padding: 12px 12px 0 !important; }
+      .calendar-container { padding: 10px; }
+
+      /* メール画面：縦積み */
+      .email-container { grid-template-columns: 1fr !important; padding: 10px; gap: 10px; }
+      .email-text { min-height: 200px; }
+
+      /* ボタン */
+      .btn { padding: 10px 14px; font-size: 14px; }
+      .btn-sm { padding: 7px 12px; font-size: 12px; }
+      .btn-success { font-size: 14px; padding: 12px; }
+
+      /* カード */
+      .card { padding: 14px; }
+    }
+
   </style>
 </head>
 <body>
@@ -223,11 +267,11 @@
         </div>
         <div class="form-group">
           <label>顧客名</label>
-          <input type="text" id="clientName" placeholder="〇〇病院 〇〇様" oninput="generateEmail()">
+          <input type="text" id="clientName" placeholder="三井ホーム 株式会社・積水ハウス 株式会社・松井建設 株式会社等" oninput="generateEmail()">
         </div>
         <div class="form-group">
           <label>工事名称（任意）</label>
-          <input type="text" id="projectName" placeholder="X線防護工事" oninput="generateEmail()">
+          <input type="text" id="projectName" placeholder="Aクリニック 新築工事・B様邸新築工事等" oninput="generateEmail()">
         </div>
         <button class="btn btn-success" style="width:100%" onclick="calculateAndSwitch()">📐 スケジュールを計算</button>
       </div>
