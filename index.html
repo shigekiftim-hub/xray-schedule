@@ -250,8 +250,8 @@
           <div class="form-group">
             <label>建具種別</label>
             <select id="fixtureType" onchange="onSpecChange()">
-              <option value="irax">アルミ建具（イラックス）</option>
-              <option value="alude">アルミ建具（アルード）</option>
+              <option value="irax">アルミ建具（引き戻）</option>
+              <option value="alude">アルミ建具（開き戻）</option>
               <option value="steel">鋼製建具</option>
             </select>
           </div>
@@ -267,7 +267,7 @@
         </div>
         <div class="form-group">
           <label>顧客名</label>
-          <input type="text" id="clientName" placeholder="三井ホーム 株式会社・積水ハウス 株式会社・松井建設 株式会社等" oninput="generateEmail()">
+          <input type="text" id="clientName" placeholder="株式会社○○ホーム・□□建設 株式会社" oninput="generateEmail()">
         </div>
         <div class="form-group">
           <label>工事名称（任意）</label>
@@ -547,10 +547,10 @@ function ensureBusinessDay(date) {
 // ========== DEFAULT PERIODS ==========
 const DEFAULT_PERIODS = {
   irax: {
-    1: { estimate: 5, drawing: 5,  checkback: 4,  payment: 20, delivery: 16, construction: 3  },
-    2: { estimate: 5, drawing: 10, checkback: 9,  payment: 20, delivery: 16, construction: 5  },
-    3: { estimate: 7, drawing: 14, checkback: 7,  payment: 20, delivery: 16, construction: 8  },
-    4: { estimate: 8, drawing: 17, checkback: 10, payment: 20, delivery: 16, construction: 13 },
+    1: { estimate: 5, drawing: 5,  checkback: 4,  payment: 20, delivery: 21, construction: 3  },
+    2: { estimate: 5, drawing: 10, checkback: 9,  payment: 20, delivery: 21, construction: 5  },
+    3: { estimate: 7, drawing: 14, checkback: 7,  payment: 20, delivery: 21, construction: 8  },
+    4: { estimate: 8, drawing: 17, checkback: 10, payment: 20, delivery: 21, construction: 13 },
   },
   alude: {
     1: { estimate: 5, drawing: 5,  checkback: 4,  payment: 20, delivery: 15, construction: 3  },
@@ -703,7 +703,7 @@ function calculateSchedule() {
       type: def.type,
       color: def.color,
       important: def.important,
-      days: def.days || null,
+      days: def.days ?? null,
       periodStart: periodStart,
       periodEnd: periodEnd,
       date: taskDate,
